@@ -59,61 +59,86 @@ def load_svi(path: str) -> pd.DataFrame:
     return cols[(cols["E_P_POV"] >= 0) & (cols["E_PCI"] > 0)]
 
 
-def main():
+# --- shared by every analyze_*.py script: load HOLC once, merge with a
+# second tract-level dataset, and print the same shape of grade summary /
+# correlation report each time. ---
+
+
+def load_tract_scores() -> pd.DataFrame:
     print("Loading HOLC crosswalk...")
-    holc_flat = load_holc_flat(HOLC_PATH)
-    print(f"  {len(holc_flat):,} clean HOLC polygon-tract records (grades A-D)")
+    tract_scores = build_tract_scores(load_holc_flat(HOLC_PATH))
+    print(f"  {len(tract_scores):,} tracts with HOLC coverage\n")
+    return tract_scores
 
-    tract_scores = build_tract_scores(holc_flat)
-    print(f"  {len(tract_scores):,} unique tracts with HOLC coverage")
 
-    print("\nLoading SVI 2010...")
-    svi = load_svi(SVI_PATH)
-    print(f"  {len(svi):,} tracts with valid SVI estimates")
+def merge_and_save(tract_scores: pd.DataFrame, other: pd.DataFrame, left_on: str, right_on: str,
+                    save_path: str, label: str) -> pd.DataFrame:
+    merged = tract_scores.merge(other, left_on=left_on, right_on=right_on, how="inner")
+    merged.to_csv(save_path, index=False)
+    print(f"Merged: {len(merged):,} tracts have both HOLC grade and {label} data\n")
+    return merged
 
-    merged = tract_scores.merge(svi, left_on="GEOID10", right_on="FIPS", how="inner")
-    merged.to_csv("merged_holc_svi.csv", index=False)
-    print(f"\nMerged: {len(merged):,} tracts have both HOLC grade and SVI data")
-    print("  -> saved to merged_holc_svi.csv")
 
-    print("\n" + "=" * 70)
-    print("MEAN OUTCOMES BY DOMINANT HOLC GRADE")
+def print_header(title: str) -> None:
     print("=" * 70)
-    summary = (
-        merged.groupby("dominant_grade")
-        .agg(
-            n_tracts=("GEOID10", "count"),
-            mean_poverty_rate=("E_P_POV", "mean"),
-            median_poverty_rate=("E_P_POV", "median"),
-            mean_per_capita_income=("E_PCI", "mean"),
-            mean_pct_minority=("P_MINORITY", "mean"),
-        )
-        .reindex(["A", "B", "C", "D"])
-    )
-    summary["mean_poverty_rate"] = (summary["mean_poverty_rate"] * 100).round(1)
-    summary["median_poverty_rate"] = (summary["median_poverty_rate"] * 100).round(1)
-    summary["mean_per_capita_income"] = summary["mean_per_capita_income"].round(0)
-    summary["mean_pct_minority"] = (summary["mean_pct_minority"] * 100).round(1)
+    print(title)
+    print("=" * 70)
+
+
+def print_grade_summary(merged: pd.DataFrame, agg: dict, title: str, decimals: int = 1) -> None:
+    summary = merged.groupby("dominant_grade").agg(**agg).reindex(["A", "B", "C", "D"]).round(decimals)
+    print_header(title)
     print(summary.to_string())
 
+
+def print_correlations(merged: pd.DataFrame, cols_labels: list, title: str) -> None:
     print("\n" + "=" * 70)
-    print("CORRELATION: continuous Historic Redlining Score (1=A best, 4=D worst)")
+    print(title)
     print("=" * 70)
-    print(f"HRS vs poverty rate:      r = {merged['HRS'].corr(merged['E_P_POV']):.3f}")
-    print(f"HRS vs per capita income: r = {merged['HRS'].corr(merged['E_PCI']):.3f}")
-    print(f"HRS vs pct minority:      r = {merged['HRS'].corr(merged['P_MINORITY']):.3f}")
+    for col, label in cols_labels:
+        print(f"HRS vs {label}: r = {merged['HRS'].corr(merged[col]):.3f}")
+
+
+def main():
+    tract_scores = load_tract_scores()
+
+    print("Loading SVI 2010...")
+    svi = load_svi(SVI_PATH)
+    print(f"  {len(svi):,} tracts with valid SVI estimates\n")
+
+    merged = merge_and_save(tract_scores, svi, "GEOID10", "FIPS", "merged_holc_svi.csv", "SVI")
+    merged["poverty_pct"] = merged["E_P_POV"] * 100
+    merged["minority_pct"] = merged["P_MINORITY"] * 100
+
+    print_grade_summary(
+        merged,
+        dict(
+            n_tracts=("GEOID10", "count"),
+            mean_poverty_rate=("poverty_pct", "mean"),
+            median_poverty_rate=("poverty_pct", "median"),
+            mean_per_capita_income=("E_PCI", "mean"),
+            mean_pct_minority=("minority_pct", "mean"),
+        ),
+        "MEAN OUTCOMES BY DOMINANT HOLC GRADE",
+    )
+
+    print_correlations(
+        merged,
+        [("poverty_pct", "poverty rate"), ("E_PCI", "per capita income"), ("minority_pct", "pct minority")],
+        "CORRELATION: continuous Historic Redlining Score (1=A best, 4=D worst)",
+    )
 
     print("\n" + "=" * 70)
     print("A vs D DIRECT COMPARISON")
     print("=" * 70)
     a = merged[merged.dominant_grade == "A"]
     d = merged[merged.dominant_grade == "D"]
-    print(f"A-graded (n={len(a)}): poverty {a.E_P_POV.mean()*100:.1f}%, "
-          f"income ${a.E_PCI.mean():,.0f}, minority {a.P_MINORITY.mean()*100:.1f}%")
-    print(f"D-graded (n={len(d)}): poverty {d.E_P_POV.mean()*100:.1f}%, "
-          f"income ${d.E_PCI.mean():,.0f}, minority {d.P_MINORITY.mean()*100:.1f}%")
+    print(f"A-graded (n={len(a)}): poverty {a.poverty_pct.mean():.1f}%, "
+          f"income ${a.E_PCI.mean():,.0f}, minority {a.minority_pct.mean():.1f}%")
+    print(f"D-graded (n={len(d)}): poverty {d.poverty_pct.mean():.1f}%, "
+          f"income ${d.E_PCI.mean():,.0f}, minority {d.minority_pct.mean():.1f}%")
     print(f"Income ratio A/D:  {a.E_PCI.mean()/d.E_PCI.mean():.2f}x")
-    print(f"Poverty ratio D/A: {d.E_P_POV.mean()/a.E_P_POV.mean():.2f}x")
+    print(f"Poverty ratio D/A: {d.poverty_pct.mean()/a.poverty_pct.mean():.2f}x")
 
     print("\nReminder: this is socioeconomic data, not physical climate-risk\n"
           "data. See README.md 'What this does NOT show' before citing these\n"

@@ -16,7 +16,7 @@ import os
 
 import pandas as pd
 
-from analyze import DATA_DIR, HOLC_PATH, build_tract_scores, load_holc_flat
+from analyze import DATA_DIR, load_tract_scores, merge_and_save, print_correlations, print_grade_summary
 
 NRI_PATH = os.path.join(DATA_DIR, "nri_census_tracts.csv")
 NRI_COLUMNS = ["TRACTFIPS", "RISK_SCORE", "EAL_SCORE", "HWAV_RISKS", "RFLD_RISKS", "CFLD_RISKS"]
@@ -32,46 +32,37 @@ def load_nri(path: str) -> pd.DataFrame:
 
 
 def main():
-    print("Loading HOLC crosswalk...")
-    tract_scores = build_tract_scores(load_holc_flat(HOLC_PATH))
-    print(f"  {len(tract_scores):,} tracts with HOLC coverage\n")
+    tract_scores = load_tract_scores()
 
     print("Loading FEMA National Risk Index...")
     nri = load_nri(NRI_PATH)
     print(f"  {len(nri):,} tracts with NRI data\n")
 
-    merged = tract_scores.merge(nri, left_on="GEOID10", right_on="TRACTFIPS", how="inner")
-    merged.to_csv("merged_holc_nri.csv", index=False)
-    print(f"Merged: {len(merged):,} tracts have both HOLC grade and NRI data\n")
+    merged = merge_and_save(tract_scores, nri, "GEOID10", "TRACTFIPS", "merged_holc_nri.csv", "NRI")
 
-    summary = (
-        merged.groupby("dominant_grade")
-        .agg(
+    print_grade_summary(
+        merged,
+        dict(
             n_tracts=("GEOID10", "count"),
             mean_overall_risk=("RISK_SCORE", "mean"),
             mean_expected_annual_loss=("EAL_SCORE", "mean"),
             mean_heat_wave_risk=("HWAV_RISKS", "mean"),
             mean_flood_risk=("FLOOD_RISKS", "mean"),
-        )
-        .reindex(["A", "B", "C", "D"])
-        .round(2)
+        ),
+        "MEAN FEMA NRI RISK SCORES BY DOMINANT HOLC GRADE\n(*_SCORE / *_RISKS are FEMA's 0-100 national percentiles)",
+        decimals=2,
     )
-    print("=" * 70)
-    print("MEAN FEMA NRI RISK SCORES BY DOMINANT HOLC GRADE")
-    print("(*_SCORE / *_RISKS are FEMA's 0-100 national percentiles)")
-    print("=" * 70)
-    print(summary.to_string())
 
-    print("\n" + "=" * 70)
-    print("CORRELATION: Historic Redlining Score vs NRI risk measures")
-    print("=" * 70)
-    for col, label in [
-        ("RISK_SCORE", "overall risk"),
-        ("EAL_SCORE", "expected annual loss"),
-        ("HWAV_RISKS", "heat wave risk"),
-        ("FLOOD_RISKS", "flood risk (river+coastal avg)"),
-    ]:
-        print(f"HRS vs {label}: r = {merged['HRS'].corr(merged[col]):.3f}")
+    print_correlations(
+        merged,
+        [
+            ("RISK_SCORE", "overall risk"),
+            ("EAL_SCORE", "expected annual loss"),
+            ("HWAV_RISKS", "heat wave risk"),
+            ("FLOOD_RISKS", "flood risk (river+coastal avg)"),
+        ],
+        "CORRELATION: Historic Redlining Score vs NRI risk measures",
+    )
 
     a, d = merged[merged.dominant_grade == "A"], merged[merged.dominant_grade == "D"]
     print(f"\nHeat wave risk ratio D/A: {d.HWAV_RISKS.mean() / a.HWAV_RISKS.mean():.2f}x")

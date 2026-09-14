@@ -17,7 +17,7 @@ import os
 
 import pandas as pd
 
-from analyze import HOLC_PATH, build_tract_scores, load_holc_flat
+from analyze import load_tract_scores, merge_and_save, print_correlations, print_grade_summary
 
 DATA_DIR = "data"
 CRE_HEAT_PATH = os.path.join(DATA_DIR, "cre22_heat_tract.csv")
@@ -32,43 +32,35 @@ def load_cre_heat(path: str) -> pd.DataFrame:
 
 
 def main():
-    print("Loading HOLC crosswalk...")
-    tract_scores = build_tract_scores(load_holc_flat(HOLC_PATH))
-    print(f"  {len(tract_scores):,} tracts with HOLC coverage\n")
+    tract_scores = load_tract_scores()
 
     print("Loading Census CRE Heat 2022...")
     cre = load_cre_heat(CRE_HEAT_PATH)
     print(f"  {len(cre):,} tracts with CRE Heat data\n")
 
-    merged = tract_scores.merge(cre, left_on="GEOID10", right_on="GEOID", how="inner")
-    merged.to_csv("merged_holc_heat.csv", index=False)
-    print(f"Merged: {len(merged):,} tracts have both HOLC grade and CRE Heat data\n")
+    merged = merge_and_save(tract_scores, cre, "GEOID10", "GEOID", "merged_holc_heat.csv", "CRE Heat")
 
-    summary = (
-        merged.groupby("dominant_grade")
-        .agg(
+    print_grade_summary(
+        merged,
+        dict(
             n_tracts=("GEOID10", "count"),
             mean_days_90f=("days_90f_heat_index", "mean"),
             mean_max_wet_bulb=("max_wet_bulb_temp", "mean"),
             mean_pct_high_vulnerability=("pct_high_heat_vulnerability", "mean"),
-        )
-        .reindex(["A", "B", "C", "D"])
-        .round(2)
+        ),
+        "MEAN HEAT EXPOSURE BY DOMINANT HOLC GRADE (Census CRE 2022)",
+        decimals=2,
     )
-    print("=" * 70)
-    print("MEAN HEAT EXPOSURE BY DOMINANT HOLC GRADE (Census CRE 2022)")
-    print("=" * 70)
-    print(summary.to_string())
 
-    print("\n" + "=" * 70)
-    print("CORRELATION: Historic Redlining Score vs heat exposure")
-    print("=" * 70)
-    for col, label in [
-        ("days_90f_heat_index", "days/year >= 90F heat index"),
-        ("max_wet_bulb_temp", "peak wet-bulb temperature"),
-        ("pct_high_heat_vulnerability", "% pop. with 3+ heat risk factors"),
-    ]:
-        print(f"HRS vs {label}: r = {merged['HRS'].corr(merged[col]):.3f}")
+    print_correlations(
+        merged,
+        [
+            ("days_90f_heat_index", "days/year >= 90F heat index"),
+            ("max_wet_bulb_temp", "peak wet-bulb temperature"),
+            ("pct_high_heat_vulnerability", "% pop. with 3+ heat risk factors"),
+        ],
+        "CORRELATION: Historic Redlining Score vs heat exposure",
+    )
 
     a, d = merged[merged.dominant_grade == "A"], merged[merged.dominant_grade == "D"]
     print(f"\nHigh-vulnerability pop. % ratio D/A: {d.pct_high_heat_vulnerability.mean() / a.pct_high_heat_vulnerability.mean():.2f}x")

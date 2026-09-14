@@ -14,7 +14,7 @@ import os
 
 import pandas as pd
 
-from analyze import DATA_DIR, HOLC_PATH, build_tract_scores, load_holc_flat
+from analyze import DATA_DIR, load_tract_scores
 
 SVI_TRACT_DIR = os.path.join(DATA_DIR, "cdc-svi", "csv", "tract")
 
@@ -55,9 +55,7 @@ def load_svi_year(year: int, schema: dict) -> pd.DataFrame:
 
 
 def main():
-    print("Loading HOLC crosswalk...")
-    tract_scores = build_tract_scores(load_holc_flat(HOLC_PATH))
-    print(f"  {len(tract_scores):,} tracts with HOLC coverage\n")
+    tract_scores = load_tract_scores()
 
     rows = []
     for year, schema in sorted(YEAR_SCHEMAS.items()):

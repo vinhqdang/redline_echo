@@ -22,7 +22,7 @@ import urllib.request
 
 import pandas as pd
 
-from analyze import HOLC_PATH, build_tract_scores, load_holc_flat
+from analyze import load_tract_scores, print_correlations, print_grade_summary
 
 API_KEY = os.environ["CENSUS_API_KEY"]
 VINTAGE = 2024  # ACS 2020-2024 5-year estimates: most recent tract-level release available
@@ -74,8 +74,7 @@ def main():
     acs.to_csv("acs_2024_tracts.csv", index=False)
     print(f"  {len(acs):,} tracts with valid ACS {VINTAGE} estimates\n")
 
-    print("Loading HOLC crosswalk...")
-    tract_scores = build_tract_scores(load_holc_flat(HOLC_PATH))
+    tract_scores = load_tract_scores()
 
     merged = tract_scores.merge(acs, left_on="GEOID10", right_on="GEOID", how="inner")
     print(f"Merged: {len(merged):,} tracts have both HOLC grade and ACS {VINTAGE} data")
@@ -86,28 +85,25 @@ def main():
         " dropped, the same way 2020/2022 SVI already handled this.)\n"
     )
 
-    summary = (
-        merged.groupby("dominant_grade")
-        .agg(
+    print_grade_summary(
+        merged,
+        dict(
             n_tracts=("GEOID10", "count"),
             mean_poverty_rate=("poverty_rate", "mean"),
             mean_per_capita_income=("per_capita_income", "mean"),
             mean_pct_minority=("minority_pct", "mean"),
-        )
-        .reindex(["A", "B", "C", "D"])
-        .round(1)
+        ),
+        f"MEAN OUTCOMES BY DOMINANT HOLC GRADE, ACS {VINTAGE - 4}-{VINTAGE} 5-YEAR ESTIMATES",
     )
-    print("=" * 70)
-    print(f"MEAN OUTCOMES BY DOMINANT HOLC GRADE, ACS {VINTAGE - 4}-{VINTAGE} 5-YEAR ESTIMATES")
-    print("=" * 70)
-    print(summary.to_string())
 
     a, d = merged[merged.dominant_grade == "A"], merged[merged.dominant_grade == "D"]
     print(f"\nPoverty ratio D/A:  {d.poverty_rate.mean() / a.poverty_rate.mean():.2f}x")
     print(f"Income ratio A/D:   {a.per_capita_income.mean() / d.per_capita_income.mean():.2f}x")
-    print(f"HRS vs poverty:     r = {merged['HRS'].corr(merged['poverty_rate']):.3f}")
-    print(f"HRS vs income:      r = {merged['HRS'].corr(merged['per_capita_income']):.3f}")
-    print(f"HRS vs pct minority: r = {merged['HRS'].corr(merged['minority_pct']):.3f}")
+    print_correlations(
+        merged,
+        [("poverty_rate", "poverty"), ("per_capita_income", "income"), ("minority_pct", "pct minority")],
+        f"CORRELATION: Historic Redlining Score vs ACS {VINTAGE} outcomes",
+    )
 
 
 if __name__ == "__main__":
