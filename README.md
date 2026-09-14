@@ -146,6 +146,42 @@ HRS-poverty correlation is essentially flat (0.34-0.36) across all six
 vintages spanning 12 years. This is not a one-year artifact of the 2010
 snapshot in "What this DOES show" above.
 
+## As current as the data gets: ACS 2020-2024
+
+No government dataset covering anything close to 2026 exists yet for
+these indicators — CDC/ATSDR's own SVI still tops out at 2022 (confirmed
+directly against their current data-documentation page, not just the
+GitHub mirror). The closest real substitute is the Census Bureau's
+American Community Survey (ACS) 5-year estimates, vintage 2024 (i.e.
+2020-2024 data, published 2025) — the most recent tract-level release
+that exists. `analyze_acs.py` pulls it live from `api.census.gov`
+(50 states + DC, poverty/income/race-ethnicity tables) and reruns the
+same comparison:
+
+|                | n tracts | poverty % | per capita income | % minority |
+|---|---|---|---|---|
+| A | 1,056 | 10.0 | $73,791 | 34.9 |
+| B | 3,087 | 14.3 | $50,853 | 48.6 |
+| C | 6,531 | 18.2 | $40,442 | 59.8 |
+| D | 3,985 | 23.1 | $40,042 | 67.1 |
+
+Poverty ratio D/A: 2.31x. Income ratio A/D: 1.84x. HRS↔poverty r = 0.304,
+HRS↔income r = −0.276, HRS↔% minority r = 0.318 — the same monotonic
+pattern as every SVI vintage above, still holding in the most current
+tract data available, 90+ years after the maps were drawn.
+
+Two caveats specific to this cross-check:
+
+- Only 14,659 of the 16,500 HOLC-covered tracts matched (vs. 16,372 for
+  2010 SVI). ACS 2020-2024 uses 2020 census tract boundaries; the HOLC
+  crosswalk uses 2010 boundaries. Tracts that were split or merged in
+  the 2020 redistricting don't share a GEOID across the two and get
+  dropped by the join — the same boundary-drift issue CDC/ATSDR's own
+  documentation notes for its 2020/2022 SVI releases.
+- Needs a free Census API key (`https://api.census.gov/data/key_signup.html`)
+  in the `CENSUS_API_KEY` environment variable — not bundled with this
+  repo, and intentionally not committed anywhere in it.
+
 ## Statistical robustness
 
 Group means and a bivariate correlation can both be driven by a
@@ -193,16 +229,20 @@ mechanism.
   `holc_trend_by_year.csv`
 - `regression.py` — OLS checks (state fixed effects, controlling for
   current racial composition) on top of `merged_holc_svi.csv`
+- `analyze_acs.py` — pulls ACS 2020-2024 5-year tract data live from
+  `api.census.gov` and reruns the comparison against it; saves
+  `acs_2024_tracts.csv`
 - `requirements.txt` — `pandas`, `statsmodels`
 
 ## Running it
 
 ```bash
 pip install -r requirements.txt
-python download_data.py   # ~1.5GB (full multi-year SVI archive), a few minutes
+python download_data.py     # ~1.5GB (full multi-year SVI archive), a few minutes
 python analyze.py           # 2010 snapshot: group means, correlations
 python analyze_trends.py    # same comparison across 2010-2022
 python regression.py        # OLS robustness checks (needs analyze.py run first)
+CENSUS_API_KEY=... python analyze_acs.py   # cross-check against ACS 2020-2024
 ```
 
 ## Extending this

@@ -217,6 +217,8 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Project data (fetched by download_data.py, regenerate rather than commit)
+# Project data (fetched by download_data.py / analyze_acs.py, regenerate rather than commit)
 /data/
 merged_holc_svi.csv
+holc_trend_by_year.csv
+acs_2024_tracts.csv
