@@ -82,18 +82,20 @@ physical climate/environmental data** — that's no longer fully true (see
 "Climate risk: FEMA National Risk Index", "Environmental quality: EPA
 EJScreen", and "Direct heat exposure: Census Community Resilience
 Estimates" below). The published papers this manuscript relies on
-(Hoffman, Shandas & Pendleton 2020; Lane et al. 2022; Salazar-Miranda et
-al. 2024) establish the second half of the causal chain — that
+(Hoffman, Shandas & Pendleton 2020; Salazar-Miranda et al. 2024)
+establish the second half of the causal chain for heat and flood — that
 socioeconomic sorting translates into measurably higher heat and flood
 exposure via reduced tree canopy, more impervious surface, and less
 drainage investment, using fine-grained satellite/city-level
-measurements. This project's own attempts at that link, using three
-different national datasets, find real but *inconsistent-strength*
-signals — strong for pollution/vulnerability, weak to none for raw
-natural-hazard risk and physical heat-day counts — see those sections
-for the numbers and why the differences likely trace to what each
-dataset actually measures (national risk-index composites and
-climate-zone-driven heat-day counts vs. policy-driven siting and
+measurements. A parallel literature (Lane et al. 2022) documents the
+same redlining-to-present-day-disparity pattern for air pollution
+specifically, not heat or flood. This project's own attempts at these
+links, using three different national datasets, find real but
+*inconsistent-strength* signals — strong for pollution/vulnerability,
+weak to none for raw natural-hazard risk and physical heat-day counts —
+see those sections for the numbers and why the differences likely trace
+to what each dataset actually measures (national risk-index composites
+and climate-zone-driven heat-day counts vs. policy-driven siting and
 population vulnerability), rather than the underlying literature being
 wrong. The still-missing piece is a direct, within-city land-surface-
 temperature comparison — see "Extending this".
