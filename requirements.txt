@@ -1,3 +1,4 @@
 pandas>=2.0
 statsmodels>=0.14
+dbfread>=2.0
 

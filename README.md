@@ -68,19 +68,19 @@ signal of it 80-90 years later.
 
 ## What this DOES NOT show
 
-**This is socioeconomic data (poverty, income, race), not physical
-climate-risk data (heat, flood exposure).** The published papers this
-manuscript relies on (Hoffman, Shandas & Pendleton 2020; Lane et al.
-2022; Salazar-Miranda et al. 2024) establish the second half of the
-causal chain — that this socioeconomic sorting translates into
-measurably higher heat and flood exposure via reduced tree canopy,
-more impervious surface, and less drainage investment. This project
-does not independently re-verify that second link, because building
-this without direct access to FEMA/NOAA/EPA endpoints, we could only
-reach data mirrored on GitHub (see Data Sources). **From an environment
-with unrestricted internet access, extending this to pull real
-climate-risk data is the natural next step** — see "Extending this"
-below for where to start (and for what was already tried).
+**This is mostly socioeconomic data (poverty, income, race), not physical
+climate-risk data (heat, flood exposure)** — with one real exception now
+(see "Climate risk: FEMA National Risk Index" below). The published
+papers this manuscript relies on (Hoffman, Shandas & Pendleton 2020;
+Lane et al. 2022; Salazar-Miranda et al. 2024) establish the second half
+of the causal chain — that socioeconomic sorting translates into
+measurably higher heat and flood exposure via reduced tree canopy, more
+impervious surface, and less drainage investment, using fine-grained
+satellite/city-level measurements. This project's own attempt at that
+link, using FEMA's national tract-level risk index, finds a real but
+*much weaker* signal than the socioeconomic side — see that section for
+the numbers and why the mismatch in granularity likely explains it,
+rather than the underlying claim being wrong.
 
 This is also **correlational, not causal**, at the tract level (unlike
 Salazar-Miranda et al. 2024's boundary-discontinuity design, which
@@ -218,9 +218,98 @@ downtown). It rules out "it's just states" and "it's just who lives there
 now" as full explanations; it does not establish the specific causal
 mechanism.
 
+## Climate risk: FEMA National Risk Index
+
+`hazards.fema.gov` and `www.fema.gov`'s own static-file downloads
+returned 403 from every environment tried across this project — but
+FEMA's National Risk Index (NRI) Census Tracts table is also published
+as an open ArcGIS Hub dataset by `resilience.climate.gov` (US Climate
+Resilience Toolkit), and that download endpoint isn't blocked.
+`download_data.py` now fetches it from there; `analyze_climate.py` joins
+it to the HOLC crosswalk on tract FIPS and compares FEMA's per-hazard
+risk scores (0-100 national percentile) by dominant grade:
+
+|                | n tracts | overall risk | expected annual loss | heat wave risk | flood risk |
+|---|---|---|---|---|---|
+| A | 1,090 | 37.85 | 41.40 | 49.30 | 29.07 |
+| B | 3,170 | 36.98 | 35.65 | 55.41 | 22.16 |
+| C | 6,740 | 38.69 | 34.55 | 56.29 | 22.17 |
+| D | 4,064 | 44.02 | 38.30 | 58.33 | 28.82 |
+
+HRS correlations: overall risk r = 0.085, expected annual loss r = −0.006,
+heat wave risk r = 0.080, flood risk r = 0.025. Heat wave risk ratio D/A
+is 1.18x; flood risk ratio D/A is 0.99x (essentially no difference).
+
+**This is a real result, not a null finding to explain away: at this
+granularity, the redlining-to-climate-risk link is weak to nonexistent**
+— nothing like the r ≈ 0.30-0.36 seen for poverty, income, and racial
+composition throughout this project. Two things are worth separating:
+
+- FEMA's NRI is a *national*, multi-hazard, loss-weighted composite —
+  `EAL_SCORE` and `RISK_SCORE` are dominated by total building/agricultural
+  value and area exposure across 18 hazard types (including ones with no
+  urban-heat-island mechanism at all, like drought and hurricane wind).
+  It is not built to detect within-city microclimate differences.
+- Hoffman, Shandas & Pendleton (2020) and Shreevastava et al. (2025)
+  measure heat directly and locally — satellite land-surface temperature
+  compared *within the same city*, at much finer spatial resolution, over
+  the same summer days. A national tract-level percentile score is a
+  coarser instrument and would be expected to miss a real, but
+  intra-urban, effect.
+
+So this doesn't contradict those papers' findings — it shows that FEMA's
+NRI, specifically, isn't the right instrument to reproduce them with.
+Getting a truly comparable measure back would need city-scoped land
+surface temperature data (see "Extending this" below), not a national
+FEMA-style risk index.
+
+## Environmental quality: EPA EJScreen
+
+EPA discontinued public access to EJScreen in February 2025, and
+`epa.gov`/`gaftp.epa.gov` are unreachable the same way FEMA's own domains
+are — but the same trick that worked for the NRI file applies again:
+EPA's last-published EJScreen 2.32 tract data is re-hosted as an ArcGIS
+item by a third party, straight from the official release (same
+`ID`/`STATE_NAME`/indicator schema as EPA's own documentation).
+`analyze_ejscreen.py` joins it to the HOLC crosswalk and compares four
+percentile indicators (0-100 national percentile) by dominant grade:
+
+|                | n tracts | air pollution | traffic proximity | hazardous-site proximity | lead paint (pre-1960 housing) |
+|---|---|---|---|---|---|
+| A | 1,058 | 60.2 | 74.0 | 61.6 | 82.1 |
+| B | 3,109 | 61.8 | 77.4 | 66.1 | 83.8 |
+| C | 6,588 | 65.8 | 79.3 | 69.1 | 80.8 |
+| D | 4,035 | 66.9 | 80.6 | 72.7 | 75.5 |
+
+HRS correlations: air pollution r = 0.130, traffic proximity r = 0.113,
+hazardous-site proximity r = 0.149, lead paint r = **−0.144**. D/A ratios:
+air pollution 1.11x, hazardous-site proximity 1.18x, lead paint 0.92x.
+
+This lands between the other two results: a real, monotonic,
+statistically-in-the-expected-direction pattern for pollution burden and
+industrial-site proximity — weaker than the socioeconomic gap (r ≈
+0.34-0.36) but clearly stronger than FEMA NRI's near-zero natural-hazard
+correlations. That's a plausible ordering: zoning and permitting
+decisions (where a highway, incinerator, or industrial corridor gets
+sited) are a much more direct lever of historical disinvestment than
+hurricane or drought exposure, which mostly follows geography, not policy.
+
+The lead-paint indicator (functionally "% pre-1960 housing") runs
+**backwards** — D-graded tracts have *less* old housing than A-graded
+tracts today, not more. A plausible explanation, not a verified one: the
+same disinvested neighborhoods that got the "D" grade were also the ones
+most likely to be torn down for mid-20th-century urban renewal and
+highway construction (which the historical literature well documents as
+disproportionately targeting Black and redlined neighborhoods), replacing
+older housing stock with newer — often public or low-quality —
+construction. That would flatten or reverse the historic-grade↔housing-age
+relationship without changing the underlying poverty/segregation story.
+This project doesn't verify that account; it's flagged here rather than
+smoothed over.
+
 ## Files
 
-- `download_data.py` — fetches both source files into `data/` (the SVI
+- `download_data.py` — fetches all source files into `data/` (the SVI
   clone includes every vintage 2000-2022, not just 2010)
 - `analyze.py` — builds the HRS, joins, prints the summary table,
   correlations, and A-vs-D comparison; saves `merged_holc_svi.csv`
@@ -232,55 +321,51 @@ mechanism.
 - `analyze_acs.py` — pulls ACS 2020-2024 5-year tract data live from
   `api.census.gov` and reruns the comparison against it; saves
   `acs_2024_tracts.csv`
-- `requirements.txt` — `pandas`, `statsmodels`
+- `analyze_climate.py` — joins FEMA National Risk Index hazard scores;
+  saves `merged_holc_nri.csv`
+- `analyze_ejscreen.py` — joins EPA EJScreen pollution/proximity
+  indicators; saves `merged_holc_ejscreen.csv`
+- `requirements.txt` — `pandas`, `statsmodels`, `dbfread`
 
 ## Running it
 
 ```bash
 pip install -r requirements.txt
-python download_data.py     # ~1.5GB (full multi-year SVI archive), a few minutes
+python download_data.py     # ~2.2GB total, several minutes
 python analyze.py           # 2010 snapshot: group means, correlations
 python analyze_trends.py    # same comparison across 2010-2022
 python regression.py        # OLS robustness checks (needs analyze.py run first)
 CENSUS_API_KEY=... python analyze_acs.py   # cross-check against ACS 2020-2024
+python analyze_climate.py   # cross-check against FEMA National Risk Index
+python analyze_ejscreen.py  # cross-check against EPA EJScreen
 ```
 
 ## Extending this
 
-To actually complete the causal chain (redlining → socioeconomic
-sorting → **physical climate risk**), the natural next additions are:
+The causal chain (redlining → socioeconomic sorting → **physical
+climate/environmental risk**) is now checked against three different
+physical-side datasets — FEMA NRI (natural hazards, weak link),
+EPA EJScreen (pollution burden, moderate link), and nothing yet for
+direct land-surface temperature. The one piece still missing:
 
-- **FEMA National Risk Index**: tract-level flood/heat/wildfire risk
-  scores, bulk CSV download at https://hazards.fema.gov/nri/data-resources
-- **EPA EJScreen**: tract-level environmental indicators (heat, air
-  quality, proximity to hazards). EPA discontinued public access to
-  EJScreen in February 2025; third-party mirrors of the last published
-  vintage exist (e.g. screening-tools.com, a Zenodo archive) but were
-  not reachable from this environment either — see below.
-- **NOAA/NASA land surface temperature**: for a direct heat measure
-  rather than a risk index (see Shreevastava et al. 2025's use of
-  ECOSTRESS data, cited in the manuscript, for the gold-standard
-  version of this)
+- **NOAA/NASA land surface temperature**: a direct, within-city heat
+  measure rather than a risk index or pollution proxy — see
+  Shreevastava et al. 2025's use of ECOSTRESS data, cited in the
+  manuscript, for the gold-standard version of this. This is the one
+  most likely to actually reproduce Hoffman, Shandas & Pendleton
+  (2020)'s finding, since it measures the same thing they measured.
 
-Joining any of these to `merged_holc_svi.csv` on `GEOID10` would let
-you test the actual heat/flood link directly, the same way the cited
-papers do — rather than relying on their published numbers.
-
-**Tried from this environment (2026-09):** `hazards.fema.gov` and
-`www.epa.gov` both returned HTTP 403/404 through the outbound proxy
-here, and a Zenodo mirror of archived EJScreen data timed out. Only
-GitHub-hosted mirrors (`raw.githubusercontent.com`, arbitrary public
-repos) were reachable — the same constraint noted above for the
-HOLC/SVI sources. Searched further for a GitHub-native tract-level heat
-dataset as a substitute and checked two candidates: `US-Cities-UHI-Analysis`
-(README describes a `UHI_Cities_2015_2022.csv` output, but the repo as
-published doesn't actually contain that file, and it's 5 cities'
-monthly urban-vs-rural means anyway — not tract-resolved, so it
-couldn't join to individual HOLC grades even if present) and
-`LA-neighborhood-heat` (a real census-tract-scale heat modeling
-pipeline for LA, but it computes its inputs from satellite providers
-directly at runtime rather than shipping data in the repo, so using it
-still needs non-GitHub network access this environment doesn't have).
-So this extension is still open: it needs to run from a machine with
-direct access to FEMA/EPA/NOAA, or a GitHub-mirrored copy of the actual
-NRI/EJScreen/LST tract tables needs to be located first.
+**How the FEMA/EPA data got unblocked:** `hazards.fema.gov`,
+`www.fema.gov`'s static file paths, `www.epa.gov`, and `gaftp.epa.gov`
+all return 403/404 from this environment (EPA also discontinued public
+EJScreen access in February 2025). But both agencies' official data gets
+re-published as ArcGIS Hub / ArcGIS Online items — by climate.gov for
+NRI, by a third party direct from EPA's release for EJScreen — and
+`www.arcgis.com` / `opendata.arcgis.com` aren't blocked. That's the
+pattern worth trying first for the remaining NOAA/NASA LST piece too:
+search for an ArcGIS-hosted item mirroring it before assuming a `.gov`
+block is final. (GitHub-native tract-level heat datasets were also
+checked and didn't pan out: `US-Cities-UHI-Analysis`'s described output
+CSV isn't actually in the repo, and `LA-neighborhood-heat` needs live
+satellite-provider APIs rather than shipping data — see the repo history
+for details if picking this back up.)
