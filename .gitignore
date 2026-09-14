@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project data (fetched by download_data.py, regenerate rather than commit)
+/data/
+merged_holc_svi.csv
