@@ -1,8 +1,11 @@
-# Redlining (HOLC) vs. Present-Day Socioeconomic Outcomes
+# Redline Echo
 
-Joins the official 1930s HOLC redlining grades to 2010 census tracts and
-looks at how poverty, income, and racial composition in those same tracts
-looked ~70 years later, per the 2010 CDC/ATSDR Social Vulnerability Index.
+Redlining (HOLC) vs. present-day socioeconomic outcomes: joins the
+official 1930s HOLC redlining grades to 2010 census tracts and looks
+at how poverty, income, and racial composition in those same tracts
+looked ~70 years later, per the 2010 CDC/ATSDR Social Vulnerability
+Index — the 1937 map decisions still echoing in the 2010 data, decades
+after the Fair Housing Act (1968) outlawed redlining.
 
 This was built to sanity-check a claim used in a *Teaching Sociology*
 manuscript (module: students build a climate-risk model, audit it for
