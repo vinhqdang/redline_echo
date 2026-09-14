@@ -68,19 +68,26 @@ signal of it 80-90 years later.
 
 ## What this DOES NOT show
 
-**This is mostly socioeconomic data (poverty, income, race), not physical
-climate-risk data (heat, flood exposure)** — with one real exception now
-(see "Climate risk: FEMA National Risk Index" below). The published
-papers this manuscript relies on (Hoffman, Shandas & Pendleton 2020;
-Lane et al. 2022; Salazar-Miranda et al. 2024) establish the second half
-of the causal chain — that socioeconomic sorting translates into
-measurably higher heat and flood exposure via reduced tree canopy, more
-impervious surface, and less drainage investment, using fine-grained
-satellite/city-level measurements. This project's own attempt at that
-link, using FEMA's national tract-level risk index, finds a real but
-*much weaker* signal than the socioeconomic side — see that section for
-the numbers and why the mismatch in granularity likely explains it,
-rather than the underlying claim being wrong.
+**This started as mostly socioeconomic data (poverty, income, race), not
+physical climate/environmental data** — that's no longer fully true (see
+"Climate risk: FEMA National Risk Index", "Environmental quality: EPA
+EJScreen", and "Direct heat exposure: Census Community Resilience
+Estimates" below). The published papers this manuscript relies on
+(Hoffman, Shandas & Pendleton 2020; Lane et al. 2022; Salazar-Miranda et
+al. 2024) establish the second half of the causal chain — that
+socioeconomic sorting translates into measurably higher heat and flood
+exposure via reduced tree canopy, more impervious surface, and less
+drainage investment, using fine-grained satellite/city-level
+measurements. This project's own attempts at that link, using three
+different national datasets, find real but *inconsistent-strength*
+signals — strong for pollution/vulnerability, weak to none for raw
+natural-hazard risk and physical heat-day counts — see those sections
+for the numbers and why the differences likely trace to what each
+dataset actually measures (national risk-index composites and
+climate-zone-driven heat-day counts vs. policy-driven siting and
+population vulnerability), rather than the underlying literature being
+wrong. The still-missing piece is a direct, within-city land-surface-
+temperature comparison — see "Extending this".
 
 This is also **correlational, not causal**, at the tract level (unlike
 Salazar-Miranda et al. 2024's boundary-discontinuity design, which
@@ -307,6 +314,50 @@ relationship without changing the underlying poverty/segregation story.
 This project doesn't verify that account; it's flagged here rather than
 smoothed over.
 
+## Direct heat exposure: Census Community Resilience Estimates
+
+FEMA's own national heat-severity layer (The Trust for Public Land's
+"Heat Severity — USA 2025", 30m Landsat-derived, updated yearly, exactly
+the kind of intra-city heat data this project needed) turned out to be a
+dead end for a different reason than the FEMA/EPA domain blocks above:
+it's published as a **tile-only ArcGIS Image Service** — no `getSamples`,
+no `exportImage`, just pre-rendered map tiles for display. There's no
+public HTTP way to recover the underlying pixel values without ArcGIS
+Pro/Desktop.
+
+Chasing a substitute led to something better: the Census Bureau
+publishes its own **Community Resilience Estimates (CRE) for Heat**,
+tract level, directly at `www2.census.gov` — actual heat-exposure days
+and a population heat-vulnerability composite, not a proxy.
+`analyze_heat.py` joins the 2022 release to the HOLC crosswalk:
+
+|                | n tracts | days/yr ≥ 90°F heat index | peak wet-bulb temp (°F) | % pop. high heat vulnerability |
+|---|---|---|---|---|
+| A | 1,058 | 12.72 | 80.15 | 22.26 |
+| B | 3,109 | 9.50 | 80.19 | 26.68 |
+| C | 6,588 | 7.87 | 80.08 | 30.10 |
+| D | 4,035 | 9.64 | 80.15 | 33.02 |
+
+HRS correlations: days ≥ 90°F r = −0.036, peak wet-bulb r = −0.002,
+% high heat vulnerability r = **0.259**. High-vulnerability-population
+ratio D/A = 1.48x.
+
+The two *physical* heat columns show essentially no relationship with
+HOLC grade — expected, since which state a tract is in (Arizona vs.
+Minnesota) swamps any within-city redlining signal, and HOLC cities
+aren't evenly distributed across climate zones. But the population
+**vulnerability** composite (Census's own blend of age, health, poverty,
+and air-conditioning access) shows a real, monotonic relationship — the
+strongest of any physical-risk measure in this project, because it's
+substantially a restatement of the same socioeconomic mechanism already
+documented above rather than an independent physical measurement. That's
+informative in its own right: **the people in historically redlined
+areas are more vulnerable *to* heat even where the raw physical heat
+exposure itself isn't obviously higher** — closer to what Hoffman et
+al. (2020) argue than FEMA's NRI managed to reproduce, just not via a
+direct temperature-difference measurement the way ECOSTRESS data would
+give.
+
 ## Files
 
 - `download_data.py` — fetches all source files into `data/` (the SVI
@@ -325,6 +376,8 @@ smoothed over.
   saves `merged_holc_nri.csv`
 - `analyze_ejscreen.py` — joins EPA EJScreen pollution/proximity
   indicators; saves `merged_holc_ejscreen.csv`
+- `analyze_heat.py` — joins Census CRE 2022 heat-exposure and
+  heat-vulnerability data; saves `merged_holc_heat.csv`
 - `requirements.txt` — `pandas`, `statsmodels`, `dbfread`
 
 ## Running it
@@ -338,34 +391,42 @@ python regression.py        # OLS robustness checks (needs analyze.py run first)
 CENSUS_API_KEY=... python analyze_acs.py   # cross-check against ACS 2020-2024
 python analyze_climate.py   # cross-check against FEMA National Risk Index
 python analyze_ejscreen.py  # cross-check against EPA EJScreen
+python analyze_heat.py      # cross-check against Census CRE heat-exposure data
 ```
 
 ## Extending this
 
 The causal chain (redlining → socioeconomic sorting → **physical
-climate/environmental risk**) is now checked against three different
-physical-side datasets — FEMA NRI (natural hazards, weak link),
-EPA EJScreen (pollution burden, moderate link), and nothing yet for
-direct land-surface temperature. The one piece still missing:
+climate/environmental risk**) is now checked against four physical-side
+datasets: FEMA NRI (natural hazards, weak link), EPA EJScreen (pollution
+burden, moderate link), and Census CRE Heat (raw heat exposure ~ no
+link, but heat *vulnerability* a real link — see above). What's still
+missing is a direct, within-city land-surface-temperature comparison —
+the specific measurement Hoffman, Shandas & Pendleton (2020) and
+Shreevastava et al. 2025 (ECOSTRESS) use, which none of the four
+datasets here quite substitute for (NRI and CRE's physical columns are
+both too coarse/regional; EJScreen and CRE's vulnerability composite
+are real signals, but they're pollution/socioeconomic proxies, not a
+temperature measurement).
 
-- **NOAA/NASA land surface temperature**: a direct, within-city heat
-  measure rather than a risk index or pollution proxy — see
-  Shreevastava et al. 2025's use of ECOSTRESS data, cited in the
-  manuscript, for the gold-standard version of this. This is the one
-  most likely to actually reproduce Hoffman, Shandas & Pendleton
-  (2020)'s finding, since it measures the same thing they measured.
+**Lessons from three rounds of chasing "blocked" `.gov` data, in case
+this gets picked up again:**
 
-**How the FEMA/EPA data got unblocked:** `hazards.fema.gov`,
-`www.fema.gov`'s static file paths, `www.epa.gov`, and `gaftp.epa.gov`
-all return 403/404 from this environment (EPA also discontinued public
-EJScreen access in February 2025). But both agencies' official data gets
-re-published as ArcGIS Hub / ArcGIS Online items — by climate.gov for
-NRI, by a third party direct from EPA's release for EJScreen — and
-`www.arcgis.com` / `opendata.arcgis.com` aren't blocked. That's the
-pattern worth trying first for the remaining NOAA/NASA LST piece too:
-search for an ArcGIS-hosted item mirroring it before assuming a `.gov`
-block is final. (GitHub-native tract-level heat datasets were also
-checked and didn't pan out: `US-Cities-UHI-Analysis`'s described output
-CSV isn't actually in the repo, and `LA-neighborhood-heat` needs live
-satellite-provider APIs rather than shipping data — see the repo history
-for details if picking this back up.)
+1. A domain returning 403/404 isn't necessarily the end — check whether
+   the same agency's data is re-published as an ArcGIS Hub/Online item
+   (`www.arcgis.com`, `opendata.arcgis.com` weren't blocked here and
+   unblocked both FEMA NRI and EPA EJScreen).
+2. An ArcGIS item that resolves can still be a dead end if its
+   `capabilities` say `"TilesOnly"` (map-display tiles only, no
+   `getSamples`/`exportImage`) — that's what killed the FEMA/TPL heat
+   severity raster here. Check `{service}?f=json` for `capabilities`
+   before investing time in an ArcGIS Image Service.
+3. The Census Bureau publishes a lot of directly-relevant tabular data
+   under `www2.census.gov/programs-surveys/...` outside the well-known
+   ACS/decennial products (the Community Resilience Estimates used
+   above, for one) — worth checking before assuming a topic needs a
+   FEMA/EPA/NOAA source at all.
+4. GitHub-native tract-level heat datasets were also checked and didn't
+   pan out: `US-Cities-UHI-Analysis`'s described output CSV isn't
+   actually in the repo, and `LA-neighborhood-heat` needs live
+   satellite-provider APIs rather than shipping data.

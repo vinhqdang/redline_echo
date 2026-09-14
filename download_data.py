@@ -1,12 +1,13 @@
 """
 Downloads the source datasets used by analyze.py, analyze_trends.py,
-analyze_climate.py, and analyze_ejscreen.py.
+analyze_climate.py, analyze_ejscreen.py, and analyze_heat.py.
 
 - HOLC redlining -> 2010 census tract crosswalk (American Panorama /
   Mapping Inequality, Digital Scholarship Lab, University of Richmond)
 - CDC/ATSDR Social Vulnerability Index, every published tract vintage
 - FEMA National Risk Index, tract level (natural hazard risk scores)
 - EPA EJScreen, tract level (pollution burden, industrial-site proximity)
+- Census Bureau Community Resilience Estimates for Heat, 2022, tract level
 
 ~700MB total. Run this once; analyze*.py read from ./data/.
 See README.md for full source attribution, license notes, and (for the
@@ -59,6 +60,18 @@ EJSCREEN_ZIP_PATH = os.path.join(DATA_DIR, "ejscreen_2024_tracts.zip")
 EJSCREEN_DBF_PATH = os.path.join(DATA_DIR, "ejscreen_2024_tracts.dbf")
 EJSCREEN_DBF_MEMBER = "EJSCREEN_Full_with_AS_CNMI_GU_VI.dbf"
 
+# Census Bureau's own Community Resilience Estimates for Heat, 2022 -
+# real heat exposure (days/year >= 90F, peak wet-bulb temp) plus a
+# population heat-vulnerability composite, tract level, straight from
+# www2.census.gov. Found via census.gov's own CRE-Heat product page
+# after FEMA's national heat-severity layer turned out to be a
+# tile-only image service with no public API for raw pixel values.
+CRE_HEAT_URL = (
+    "https://www2.census.gov/programs-surveys/demo/datasets/"
+    "community-resilience/2022/heat/CRE22_Heat_Tract.csv"
+)
+CRE_HEAT_PATH = os.path.join(DATA_DIR, "cre22_heat_tract.csv")
+
 
 def download_holc():
     if os.path.exists(HOLC_PATH):
@@ -105,10 +118,20 @@ def download_ejscreen():
     print(f"[done] saved to {EJSCREEN_DBF_PATH}")
 
 
+def download_cre_heat():
+    if os.path.exists(CRE_HEAT_PATH):
+        print(f"[skip] {CRE_HEAT_PATH} already exists")
+        return
+    print("Downloading Census CRE Heat 2022, Census Tracts (~13MB)...")
+    urllib.request.urlretrieve(CRE_HEAT_URL, CRE_HEAT_PATH)
+    print(f"[done] saved to {CRE_HEAT_PATH}")
+
+
 if __name__ == "__main__":
     os.makedirs(DATA_DIR, exist_ok=True)
     download_holc()
     download_svi()
     download_nri()
     download_ejscreen()
+    download_cre_heat()
     print("\nAll data downloaded. Run analyze.py next.")
