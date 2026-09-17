@@ -395,7 +395,11 @@ give.
   heat-vulnerability data; saves `merged_holc_heat.csv`
 - `visualize.py` — builds `charts/by_grade.png` and
   `charts/correlation_summary.png` from the merged CSVs above
-- `requirements.txt` — `pandas`, `statsmodels`, `dbfread`, `matplotlib`
+- `visualize_epb_figures.py` — builds the three figures used in the
+  manuscript submitted to *Environment and Planning B* (see "Manuscript
+  status" above): the Chicago/national HOLC map, the poverty-ratio
+  persistence trend, and the tract-level HRS-vs-poverty scatter
+- `requirements.txt` — `pandas`, `statsmodels`, `dbfread`, `matplotlib`, `shapely`
 
 ## Running it
 
@@ -410,6 +414,7 @@ python analyze_climate.py   # cross-check against FEMA National Risk Index
 python analyze_ejscreen.py  # cross-check against EPA EJScreen
 python analyze_heat.py      # cross-check against Census CRE heat-exposure data
 python visualize.py         # regenerate the charts at the top of this README
+python visualize_epb_figures.py  # regenerate the EPB manuscript's figures
 ```
 
 ## Charts

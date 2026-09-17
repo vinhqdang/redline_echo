@@ -2,4 +2,5 @@ pandas>=2.0
 statsmodels>=0.14
 dbfread>=2.0
 matplotlib>=3.7
+shapely>=2.0
 
