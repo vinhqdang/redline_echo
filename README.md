@@ -7,11 +7,15 @@ looked ~70 years later, per the 2010 CDC/ATSDR Social Vulnerability
 Index — the 1937 map decisions still echoing in the 2010 data, decades
 after the Fair Housing Act (1968) outlawed redlining.
 
-This was built to sanity-check a claim used in a *Teaching Sociology*
-manuscript (module: students build a climate-risk model, audit it for
-racial/income disparity, then compare results to historical HOLC maps).
-Before trusting the literature's causal story, we pulled real data
-ourselves and re-derived the basic pattern.
+This project underlies a manuscript, "Historical Redlining and
+Present-Day Urban Inequality: A Reproducible Multi-Instrument Audit
+Using Open Government Data," submitted to *Environment and Planning B:
+Urban Analytics and City Science* (Sage) and currently under review.
+The manuscript audits the same claim this repository tests: whether
+1930s HOLC redlining still predicts present-day socioeconomic and
+environmental outcomes, joined across six independent government
+datasets rather than trusting a single source or the literature's
+causal story on its own.
 
 ![Outcomes by HOLC grade](charts/by_grade.png)
 ![How strongly does HOLC grade predict each outcome](charts/correlation_summary.png)
