@@ -1,7 +1,6 @@
 """
-Produces the additional figures used in the manuscript submitted to
-Environment and Planning B: Urban Analytics and City Science (see
-README.md, "Manuscript status"): the Chicago/national HOLC map, the
+Produces the additional figures used in the manuscript described at the
+top of README.md: the Chicago/national HOLC map, the
 poverty-ratio persistence trend chart, and the tract-level HRS-vs-poverty
 scatter. These are separate from visualize.py's two summary charts,
 which are unrelated to any specific manuscript and are kept as the
@@ -9,8 +8,9 @@ README's own headline figures.
 
 Run download_data.py and analyze.py first (needs data/holc_crosswalk.geojson
 and merged_holc_svi.csv). Run analyze_trends.py first for the trend chart
-(needs holc_trend_by_year.csv). Downloads a small (~90KB) public-domain US
-state-boundary GeoJSON on first run, used only as map background context.
+(needs holc_trend_by_year.csv). Downloads a small (~90KB) US
+state-boundary GeoJSON (from the folium examples) on first run, used only
+as map background context.
 
 Requires the `shapely` package (see requirements.txt).
 """
@@ -69,7 +69,9 @@ def chicago_and_national_map_figure():
         if p.get("city") == "Chicago":
             chicago_polys.append((geom, grade))
         centroid = geom.centroid
-        geo_rows.append({"city": p.get("city"), "GEOID10": p.get("GEOID10"), "lon": centroid.x, "lat": centroid.y})
+        # city names repeat across states (Portland OR/ME, Columbus OH/GA, ...)
+        city_id = f"{p.get('city')}, {p.get('state')}"
+        geo_rows.append({"city": city_id, "GEOID10": p.get("GEOID10"), "lon": centroid.x, "lat": centroid.y})
 
     geo = pd.DataFrame(geo_rows).dropna(subset=["city", "GEOID10"])
     geo["GEOID10"] = geo["GEOID10"].astype(str)

@@ -9,8 +9,11 @@ after the Fair Housing Act (1968) outlawed redlining.
 
 This project underlies a manuscript, "Historical Redlining and
 Present-Day Urban Inequality: A Reproducible Multi-Instrument Audit
-Using Open Government Data," submitted to *Environment and Planning B:
-Urban Analytics and City Science* (Sage) and currently under review.
+Using Open Government Data." Submission history: *Environment and
+Planning B: Urban Analytics and City Science* (Sage) — desk rejected
+Sept 2026 as out of scope/methodological focus. Revised (city fixed
+effects with city-clustered SEs, housing-policy framing) for submission
+to *Housing Policy Debate* (Taylor & Francis).
 The manuscript audits the same claim this repository tests: whether
 1930s HOLC redlining still predicts present-day socioeconomic and
 environmental outcomes, joined across six independent government
@@ -208,24 +211,36 @@ Two caveats specific to this cross-check:
 
 Group means and a bivariate correlation can both be driven by a
 confound — e.g., if D grades happened to cluster in poorer states
-regardless of redlining. `regression.py` runs OLS (heteroskedasticity-robust
-SEs) on the 2010 merged data to check this:
+regardless of redlining, or in poorer cities. `regression.py` runs OLS on
+the 2010 merged data to check this. Specifications without city fixed
+effects use heteroskedasticity-robust (HC1) SEs; specifications with city
+fixed effects cluster SEs by HOLC city (223 city units, a city name within
+a state), since tracts in the same city aren't independent:
 
 | Outcome | Specification | HRS coefficient | p-value | R² |
 |---|---|---|---|---|
 | Poverty rate (%) | HRS only | +6.82 pts/grade | <1e-300 | 0.130 |
 | Poverty rate (%) | + state fixed effects | +7.16 pts/grade | <1e-300 | 0.201 |
 | Poverty rate (%) | + state FE + current minority % | +4.09 pts/grade | 2.6e-256 | 0.395 |
+| Poverty rate (%) | + city fixed effects (clustered) | +7.56 pts/grade | 2.3e-128 | 0.271 |
+| Poverty rate (%) | + city FE + current minority % (clustered) | +4.09 pts/grade | 3.2e-38 | 0.475 |
 | Per capita income ($) | HRS only | −$7,809/grade | <1e-280 | 0.123 |
 | Per capita income ($) | + state fixed effects | −$8,305/grade | <1e-300 | 0.176 |
+| Per capita income ($) | + city fixed effects (clustered) | −$8,896/grade | 2.6e-35 | 0.317 |
+| Per capita income ($) | + city FE + current minority % (clustered) | −$4,328/grade | 1.8e-25 | 0.572 |
 | % minority (2010) | HRS only | +14.14 pts/grade | <1e-300 | 0.118 |
 | % minority (2010) | + state fixed effects | +13.31 pts/grade | <1e-300 | 0.238 |
+| % minority (2010) | + city fixed effects (clustered) | +13.34 pts/grade | 1.1e-65 | 0.368 |
 
 Two things stand out:
 
 - Adding state fixed effects **doesn't shrink** the HRS coefficient — it
   grows slightly. The gap isn't an artifact of which states got more D
   grades; it holds comparing tracts within the same state.
+- City fixed effects — the comparison that matches how HOLC actually
+  graded, neighborhood against neighborhood inside one city — make the
+  coefficient **larger** again (+7.56). Clustering by city roughly
+  triples the standard error, but the estimate stays far from zero.
 - Adding today's minority % as a control cuts the poverty coefficient
   roughly in half (+6.8 → +4.1 points per grade step) but doesn't remove
   it, and it stays overwhelmingly significant. The historic grade is
@@ -237,8 +252,8 @@ This is still observational data: no instrument, no boundary-discontinuity
 design (unlike Salazar-Miranda et al. 2024), and no control for other
 plausible confounds (pre-1930s housing stock, density, distance to
 downtown). It rules out "it's just states" and "it's just who lives there
-now" as full explanations; it does not establish the specific causal
-mechanism.
+now" or "it's just which cities were surveyed" as full explanations; it
+does not establish the specific causal mechanism.
 
 ## Climate risk: FEMA National Risk Index
 
@@ -396,8 +411,7 @@ give.
 - `visualize.py` — builds `charts/by_grade.png` and
   `charts/correlation_summary.png` from the merged CSVs above
 - `visualize_epb_figures.py` — builds the three figures used in the
-  manuscript submitted to *Environment and Planning B* (see "Manuscript
-  status" above): the Chicago/national HOLC map, the poverty-ratio
+  manuscript described at the top of this README: the Chicago/national HOLC map, the poverty-ratio
   persistence trend, and the tract-level HRS-vs-poverty scatter
 - `requirements.txt` — `pandas`, `statsmodels`, `dbfread`, `matplotlib`, `shapely`
 
