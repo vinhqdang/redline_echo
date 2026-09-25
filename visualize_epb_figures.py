@@ -133,7 +133,7 @@ def chicago_and_national_map_figure():
 
     fig.tight_layout()
     path = os.path.join(OUT_DIR, "epb_fig1_holc_maps.png")
-    fig.savefig(path, dpi=200, bbox_inches="tight")
+    fig.savefig(path, dpi=300, bbox_inches="tight")
     plt.close(fig)
     print(f"[saved] {path}")
 
@@ -150,7 +150,7 @@ def trend_ratio_chart():
     ax.set_title("Persistence of the HOLC grade poverty gap, 2010-2022")
     fig.tight_layout()
     path = os.path.join(OUT_DIR, "epb_fig2_trend_ratio.png")
-    fig.savefig(path, dpi=200)
+    fig.savefig(path, dpi=300)
     plt.close(fig)
     print(f"[saved] {path}")
 
@@ -174,7 +174,7 @@ def hrs_scatter_chart():
     ax.legend(loc="upper left", fontsize=9)
     fig.tight_layout()
     path = os.path.join(OUT_DIR, "epb_fig3_hrs_scatter.png")
-    fig.savefig(path, dpi=200)
+    fig.savefig(path, dpi=300)
     plt.close(fig)
     print(f"[saved] {path}")
     print(f"  slope={slope:.3f} intercept={intercept:.3f} r={r:.3f}")

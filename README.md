@@ -13,7 +13,7 @@ Using Open Government Data." Submission history: *Environment and
 Planning B: Urban Analytics and City Science* (Sage) — desk rejected
 Sept 2026 as out of scope/methodological focus. Revised (city fixed
 effects with city-clustered SEs, housing-policy framing) for submission
-to *Housing Policy Debate* (Taylor & Francis).
+to *International Journal of Housing Policy* (Taylor & Francis).
 The manuscript audits the same claim this repository tests: whether
 1930s HOLC redlining still predicts present-day socioeconomic and
 environmental outcomes, joined across six independent government
