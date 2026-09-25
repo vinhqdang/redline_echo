@@ -12,8 +12,9 @@ Present-Day Urban Inequality: A Reproducible Multi-Instrument Audit
 Using Open Government Data." Submission history: *Environment and
 Planning B: Urban Analytics and City Science* (Sage) — desk rejected
 Sept 2026 as out of scope/methodological focus. Revised (city fixed
-effects with city-clustered SEs, housing-policy framing) for submission
-to *International Journal of Housing Policy* (Taylor & Francis).
+effects with city-clustered SEs, housing-policy framing) and submitted to
+*International Journal of Housing Policy* (Taylor & Francis) in Sept 2026;
+currently under review.
 The manuscript audits the same claim this repository tests: whether
 1930s HOLC redlining still predicts present-day socioeconomic and
 environmental outcomes, joined across six independent government
