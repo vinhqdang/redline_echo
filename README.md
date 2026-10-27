@@ -14,7 +14,14 @@ Planning B: Urban Analytics and City Science* (Sage) — desk rejected
 Sept 2026 as out of scope/methodological focus. Revised (city fixed
 effects with city-clustered SEs, housing-policy framing) and submitted to
 *International Journal of Housing Policy* (Taylor & Francis) in Sept 2026;
-currently under review.
+rejected 26 Oct 2026 without reviewer comments.
+
+Follow-up analysis (`rd_lst_boundary.py`, results in `rd_results.csv`):
+regression discontinuity in Landsat 8/9 summer land-surface temperature at
+boundaries between adjacent HOLC grades, 66 cities. Random-effects pooled
+jump at the boundary is +0.15 C (400 m bandwidth) and +0.05 C (200 m), rising
+with bandwidth, so the gap is mostly a smooth gradient rather than a
+discontinuity; placebo cutoffs are near zero.
 The manuscript audits the same claim this repository tests: whether
 1930s HOLC redlining still predicts present-day socioeconomic and
 environmental outcomes, joined across six independent government
