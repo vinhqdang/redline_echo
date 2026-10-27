@@ -23,7 +23,7 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 
 HOLC_PATH = os.path.join("data", "holc_crosswalk.geojson")
-OUT = "rd_results.csv"
+OUT = "rd_results.csv"   # outcome in {lst, ndvi, elev}; ndvi/elev are covariate-balance checks
 STEP = 60
 MAX_BW = 600
 BANDWIDTHS = (200, 400, 600)
@@ -41,7 +41,14 @@ def load_city_index():
     return d, sorted(k for k, v in counts.items() if len(v) >= MIN_AREAS)
 
 
-def rd_fit(g, bw, cutoff=0.0, side=None):
+def polygonal(geom):
+    import shapely
+    from shapely.geometry import MultiPolygon, Polygon
+    parts = [p for p in shapely.get_parts(geom) if isinstance(p, Polygon) and not p.is_empty]
+    return MultiPolygon(parts) if parts else Polygon()
+
+
+def rd_fit(g, bw, cutoff=0.0, side=None, y="lst"):
     import statsmodels.formula.api as smf
     g = g[np.abs(g.dist - cutoff) <= bw]
     if side == "worse":
@@ -52,7 +59,7 @@ def rd_fit(g, bw, cutoff=0.0, side=None):
     if g.t.nunique() < 2 or len(g) < 200:
         return None
     cl = (g.x // 300).astype(int) * 100000 + (g.y // 300).astype(int)
-    m = smf.wls("lst ~ t + r + t:r", g, weights=g.w).fit(cov_type="cluster", cov_kwds={"groups": cl})
+    m = smf.wls(f"{y} ~ t + r + t:r", g, weights=g.w).fit(cov_type="cluster", cov_kwds={"groups": cl})
     return m.params["t"], m.bse["t"], len(g)
 
 
@@ -75,13 +82,14 @@ def run_city(args):
             p = f["properties"]
             if p["city"] == city and p["state"] == state and p.get("grade") in ("A", "B", "C", "D"):
                 polys.setdefault((p["area_id"], p["grade"]), []).append(make_valid(shape(f["geometry"])))
-        areas = [(g, unary_union(ps)) for (_, g), ps in polys.items()]
+        areas = [(g, polygonal(unary_union(ps))) for (_, g), ps in polys.items()]
+        areas = [(g, a) for g, a in areas if not a.is_empty]
         allu = unary_union([a for _, a in areas])
         lon0, lat0 = allu.centroid.coords[0]
         crs = f"EPSG:{(32600 if lat0 >= 0 else 32700) + int((lon0 + 180) // 6) + 1}"
         fwd = Transformer.from_crs("EPSG:4326", crs, always_xy=True)
         areas = [(g, shapely.transform(a, lambda c: np.column_stack(fwd.transform(c[:, 0], c[:, 1])))) for g, a in areas]
-        gu = {g: unary_union([a for gg, a in areas if gg == g]) for g in "ABCD"}
+        gu = {g: polygonal(unary_union([a for gg, a in areas if gg == g])) for g in "ABCD"}
         ext = unary_union([a for _, a in areas]).bounds
 
         xs, ys = np.arange(ext[0], ext[2], STEP), np.arange(ext[1], ext[3], STEP)
@@ -123,35 +131,48 @@ def run_city(args):
             tiles.setdefault((i.properties["landsat:wrs_path"], i.properties["landsat:wrs_row"]), []).append(i)
 
         uxy = rd[["x", "y"]].drop_duplicates().reset_index(drop=True)
+
+        def read(href, scale, offset, fill=0):
+            with rasterio.open(href) as ds:
+                tx = Transformer.from_crs(crs, ds.crs, always_xy=True)
+                px, py = tx.transform(uxy.x.values, uxy.y.values)
+                v = np.array([q[0] for q in ds.sample(zip(px, py))], dtype=float)
+            return np.where(v == fill, np.nan, v * scale + offset)
+
         lst = np.full(len(uxy), np.nan)
+        ndvi = np.full(len(uxy), np.nan)
         for grp in tiles.values():
-            vals = []
+            lv, nv = [], []
             for it in sorted(grp, key=lambda i: i.properties["eo:cloud_cover"])[:3]:
-                with rasterio.open(it.assets["lwir11"].href) as ds:
-                    tx = Transformer.from_crs(crs, ds.crs, always_xy=True)
-                    px, py = tx.transform(uxy.x.values, uxy.y.values)
-                    v = np.array([s[0] for s in ds.sample(zip(px, py))], dtype=float)
-                v = np.where(v == 0, np.nan, v * 0.00341802 + 149.0 - 273.15)
-                vals.append(v)
-            m = np.nanmean(np.vstack(vals), axis=0)
-            lst = np.where(np.isnan(lst), m, lst)
-        uxy["lst"] = lst
+                lv.append(read(it.assets["lwir11"].href, 0.00341802, 149.0 - 273.15))
+                red = read(it.assets["red"].href, 0.0000275, -0.2)
+                nir = read(it.assets["nir08"].href, 0.0000275, -0.2)
+                nv.append((nir - red) / (nir + red))
+            lst = np.where(np.isnan(lst), np.nanmean(np.vstack(lv), axis=0), lst)
+            ndvi = np.where(np.isnan(ndvi), np.nanmean(np.vstack(nv), axis=0), ndvi)
+        uxy["lst"], uxy["ndvi"] = lst, ndvi
+
+        elev = np.full(len(uxy), np.nan)
+        for it in cat.search(collections=["cop-dem-glo-30"], bbox=bb).items():
+            elev = np.where(np.isnan(elev), read(it.assets["data"].href, 1.0, 0.0, fill=-32767), elev)
+        uxy["elev"] = elev
         rd = rd.merge(uxy, on=["x", "y"]).dropna(subset=["lst"])
-        rd = rd[(rd.lst > 5) & (rd.lst < 65)]
+        rd = rd[(rd.lst > 5) & (rd.lst < 65) & rd.ndvi.between(-1, 1)]
 
         rows = []
         for pair, g in [("all", rd)] + list(rd.groupby("pair")):
-            for bw in BANDWIDTHS:
-                r = rd_fit(g, bw)
-                if r:
-                    rows.append(dict(city=city, state=state, pair=pair, bw=bw, kind="rd", est=r[0], se=r[1], n=r[2]))
+            for yv in ("lst", "ndvi", "elev"):
+                for bw in BANDWIDTHS:
+                    r = rd_fit(g, bw, y=yv)
+                    if r:
+                        rows.append(dict(city=city, state=state, pair=pair, bw=bw, kind="rd", outcome=yv, est=r[0], se=r[1], n=r[2]))
             for kind, cutoff, side in (("placebo_worse", 200.0, "worse"), ("placebo_better", -200.0, "better")):
                 r = rd_fit(g, 200, cutoff, side)
                 if r:
-                    rows.append(dict(city=city, state=state, pair=pair, bw=200, kind=kind, est=r[0], se=r[1], n=r[2]))
+                    rows.append(dict(city=city, state=state, pair=pair, bw=200, kind=kind, outcome="lst", est=r[0], se=r[1], n=r[2]))
         return rows
     except Exception as e:  # keep the batch going; the failure is recorded
-        return [dict(city=city, state=state, pair="ERR", bw=0, kind=f"{type(e).__name__}: {str(e)[:80]}", est=np.nan, se=np.nan, n=0)]
+        return [dict(city=city, state=state, pair="ERR", bw=0, kind=f"{type(e).__name__}: {str(e)[:80]}", outcome="", est=np.nan, se=np.nan, n=0)]
 
 
 if __name__ == "__main__":
