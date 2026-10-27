@@ -3,4 +3,8 @@ statsmodels>=0.14
 dbfread>=2.0
 matplotlib>=3.7
 shapely>=2.0
-
+pystac-client>=0.7
+planetary-computer>=1.0
+rasterio>=1.3
+pyproj>=3.5
+numpy>=1.24
