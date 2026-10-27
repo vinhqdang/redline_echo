@@ -18,10 +18,13 @@ rejected 26 Oct 2026 without reviewer comments.
 
 Follow-up analysis (`rd_lst_boundary.py`, results in `rd_results.csv`):
 regression discontinuity in Landsat 8/9 summer land-surface temperature at
-boundaries between adjacent HOLC grades, 66 cities. Random-effects pooled
-jump at the boundary is +0.15 C (400 m bandwidth) and +0.05 C (200 m), rising
-with bandwidth, so the gap is mostly a smooth gradient rather than a
-discontinuity; placebo cutoffs are near zero.
+boundaries between adjacent HOLC grades, 68 cities, random-effects pooled.
+Jump at the boundary (worse side minus better side): +0.06 C (200 m
+bandwidth), +0.16 C (400 m), +0.22 C (600 m), rising with bandwidth, so the
+gap is mostly a smooth gradient rather than a discontinuity. Placebo cutoffs
+are near zero (-0.03, -0.05 C). Elevation is balanced (-0.04 m); NDVI is
+slightly lower on the worse side (-0.013 at 400 m), which is consistent with
+the small temperature jump.
 The manuscript audits the same claim this repository tests: whether
 1930s HOLC redlining still predicts present-day socioeconomic and
 environmental outcomes, joined across six independent government
